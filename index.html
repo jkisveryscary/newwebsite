@@ -48,6 +48,15 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       padding: 2rem;
+      pointer-events: none;
+    }
+
+    .nav-buttons {
+      pointer-events: auto;
+    }
+
+    .title-block {
+      pointer-events: none;
     }
 
     /* title */
@@ -201,15 +210,12 @@
     const canvas = document.getElementById('bg');
     const ctx = canvas.getContext('2d');
 
-    const PARTICLE_COUNT = 90;
+    const PARTICLE_COUNT = 500;
     const CONNECT_DIST   = 140;
-    const MOUSE_RADIUS   = 120;
     const DOT_RADIUS     = 1.8;
     const SPEED          = 0.35;
 
     let W, H, particles;
-    let mouse = { x: null, y: null, dragging: false };
-    let grabbed = null; // particle being dragged
 
     function resize() {
       W = canvas.width  = window.innerWidth;
@@ -222,12 +228,11 @@
       const angle = rand(0, Math.PI * 2);
       const speed = rand(SPEED * 0.4, SPEED);
       return {
-        x:  rand(0, W),
-        y:  rand(0, H),
+        x:  rand(-20, W + 20),
+        y:  rand(-20, H + 20),
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         r:  rand(1.2, DOT_RADIUS),
-        // subtle wander
         wander: rand(0, Math.PI * 2),
         wanderSpeed: rand(0.003, 0.012),
         opacity: rand(0.4, 1),
@@ -242,122 +247,76 @@
     function draw() {
       ctx.clearRect(0, 0, W, H);
 
-      // update
+      // update all particles
       for (const p of particles) {
-        if (p === grabbed) continue;
-
-        // gentle wander: nudge velocity direction slowly
         p.wander += p.wanderSpeed;
         p.vx += Math.cos(p.wander) * 0.008;
         p.vy += Math.sin(p.wander) * 0.008;
 
-        // clamp speed
         const spd = Math.hypot(p.vx, p.vy);
         if (spd > SPEED) { p.vx = (p.vx / spd) * SPEED; p.vy = (p.vy / spd) * SPEED; }
-
-        // mouse repulsion (non-dragged)
-        if (mouse.x !== null) {
-          const dx = p.x - mouse.x, dy = p.y - mouse.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < MOUSE_RADIUS && dist > 0) {
-            const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS * 0.6;
-            p.vx += (dx / dist) * force;
-            p.vy += (dy / dist) * force;
-          }
-        }
 
         p.x += p.vx;
         p.y += p.vy;
 
-        // wrap edges
         if (p.x < -20)  p.x = W + 20;
         if (p.x > W+20) p.x = -20;
         if (p.y < -20)  p.y = H + 20;
         if (p.y > H+20) p.y = -20;
       }
 
-      // dragged particle follows mouse smoothly
-      if (grabbed && mouse.x !== null) {
-        grabbed.x += (mouse.x - grabbed.x) * 0.18;
-        grabbed.y += (mouse.y - grabbed.y) * 0.18;
-        grabbed.vx = (mouse.x - grabbed.x) * 0.1;
-        grabbed.vy = (mouse.y - grabbed.y) * 0.1;
+      // ── spatial grid for O(n) connection checks instead of O(n²) ──
+      const cellSize = CONNECT_DIST;
+      const cols = Math.ceil(W / cellSize) + 1;
+      const grid = new Map();
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const cx = Math.floor(p.x / cellSize);
+        const cy = Math.floor(p.y / cellSize);
+        const key = cx * 10000 + cy;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key).push(i);
       }
 
-      // draw connections
+      // draw connections — only check neighbouring cells
+      ctx.lineWidth = 0.8;
       for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i], b = particles[j];
-          const dx = a.x - b.x, dy = a.y - b.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < CONNECT_DIST) {
-            const alpha = (1 - dist / CONNECT_DIST) * 0.22;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(0,229,255,${alpha})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
+        const a = particles[i];
+        const cx = Math.floor(a.x / cellSize);
+        const cy = Math.floor(a.y / cellSize);
+        for (let nx = cx - 1; nx <= cx + 1; nx++) {
+          for (let ny = cy - 1; ny <= cy + 1; ny++) {
+            const neighbours = grid.get(nx * 10000 + ny);
+            if (!neighbours) continue;
+            for (const j of neighbours) {
+              if (j <= i) continue; // avoid duplicates
+              const b = particles[j];
+              const dx = a.x - b.x, dy = a.y - b.y;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < CONNECT_DIST * CONNECT_DIST) {
+                const alpha = (1 - Math.sqrt(distSq) / CONNECT_DIST) * 0.22;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.strokeStyle = `rgba(0,229,255,${alpha.toFixed(2)})`;
+                ctx.stroke();
+              }
+            }
           }
         }
       }
 
-      // draw dots
+      // draw all dots in one pass — no per-dot shadowBlur (expensive)
+      ctx.shadowBlur = 0;
       for (const p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0,229,255,${p.opacity * 0.75})`;
-        ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = p === grabbed ? 14 : 6;
+        ctx.fillStyle = `rgba(0,229,255,${(p.opacity * 0.75).toFixed(2)})`;
         ctx.fill();
       }
-      ctx.shadowBlur = 0;
 
       requestAnimationFrame(draw);
     }
-
-    // ── mouse / touch ──
-    function nearestParticle(x, y) {
-      let best = null, bestD = Infinity;
-      for (const p of particles) {
-        const d = Math.hypot(p.x - x, p.y - y);
-        if (d < bestD) { bestD = d; best = p; }
-      }
-      return bestD < 40 ? best : null;
-    }
-
-    canvas.addEventListener('mousemove', e => {
-      mouse.x = e.clientX; mouse.y = e.clientY;
-    });
-    canvas.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
-
-    canvas.addEventListener('mousedown', e => {
-      grabbed = nearestParticle(e.clientX, e.clientY);
-      if (!grabbed) {
-        // grab the nearest one anyway within larger radius
-        let best = null, bestD = Infinity;
-        for (const p of particles) {
-          const d = Math.hypot(p.x - e.clientX, p.y - e.clientY);
-          if (d < bestD) { bestD = d; best = p; }
-        }
-        if (bestD < 80) grabbed = best;
-      }
-    });
-    canvas.addEventListener('mouseup', () => { grabbed = null; });
-
-    // touch
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      const t = e.touches[0];
-      mouse.x = t.clientX; mouse.y = t.clientY;
-    }, { passive: false });
-    canvas.addEventListener('touchstart', e => {
-      const t = e.touches[0];
-      mouse.x = t.clientX; mouse.y = t.clientY;
-      grabbed = nearestParticle(t.clientX, t.clientY) ||
-        (() => { let b=null,bd=Infinity; for(const p of particles){const d=Math.hypot(p.x-t.clientX,p.y-t.clientY);if(d<bd){bd=d;b=p;}} return bd<80?b:null; })();
-    });
-    canvas.addEventListener('touchend', () => { grabbed = null; mouse.x = null; mouse.y = null; });
 
     window.addEventListener('resize', () => { resize(); });
 
