@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Games — Carson Games</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #080b10;
+      --panel:   #0d1520;
+      --border:  #1a2840;
+      --accent:  #00e5ff;
+      --accent3: #a259ff;
+      --text:    #c8d8e8;
+      --muted:   #3a5060;
+      --nav-h:   64px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── scanlines ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,.06) 2px, rgba(0,0,0,.06) 4px
+      );
+    }
+
+    /* ── pulsing background ── */
+    .bg-pulse {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 80% 60% at 50% 40%,
+        rgba(0,229,255,.04) 0%, transparent 70%);
+      animation: bgPulse 6s ease-in-out infinite;
+    }
+    @keyframes bgPulse {
+      0%,100% { opacity: 0.4; transform: scale(1); }
+      50%      { opacity: 1;   transform: scale(1.08); }
+    }
+
+    /* second slower orb for variety */
+    .bg-pulse2 {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 60% 50% at 75% 70%,
+        rgba(162,89,255,.03) 0%, transparent 65%);
+      animation: bgPulse2 9s ease-in-out infinite;
+    }
+    @keyframes bgPulse2 {
+      0%,100% { opacity: 0.3; transform: scale(1.05); }
+      50%      { opacity: 0.8; transform: scale(1); }
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--nav-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2.5rem;
+      background: rgba(8,11,16,.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.1rem; font-weight: 900;
+      letter-spacing: .1em;
+      color: var(--accent);
+      text-decoration: none;
+      text-shadow: 0 0 20px rgba(0,229,255,.4);
+    }
+    .nav-logo span { color: #e2eff8; }
+
+    .nav-links {
+      display: flex; align-items: center; gap: .25rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      display: block;
+      padding: .45rem 1rem;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: .8rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      border-radius: 3px;
+      transition: color .2s, background .2s;
+    }
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--accent);
+      background: rgba(0,229,255,.07);
+    }
+    .nav-links a.active {
+      border-bottom: 2px solid var(--accent);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      padding: 4rem 2.5rem 2.5rem;
+      text-align: center;
+    }
+
+    .hero-label {
+      font-size: .7rem; letter-spacing: .25em; text-transform: uppercase;
+      color: var(--accent); font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      margin-bottom: .8rem;
+    }
+    .hero-label::before, .hero-label::after {
+      content: ''; display: block; width: 28px; height: 1px;
+      background: rgba(0,229,255,.35);
+    }
+
+    .hero h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 900; letter-spacing: .06em;
+      color: #e2eff8;
+      text-shadow: 0 0 40px rgba(0,229,255,.15);
+    }
+    .hero h1 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent3));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      margin-top: .6rem;
+      font-size: .95rem; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase;
+    }
+
+    /* ── GRID ── */
+    .games-section {
+      position: relative; z-index: 1;
+      padding: 2rem 2.5rem 5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .games-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .games-grid { grid-template-columns: repeat(2, 1fr); }
+      nav { padding: 0 1.2rem; }
+      .games-section { padding: 1.5rem 1.2rem 4rem; }
+    }
+
+    /* ── GAME CARD ── */
+    .game-card {
+      display: block;
+      text-decoration: none;
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+    }
+    .game-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card-thumb {
+      position: relative;
+      width: 100%; aspect-ratio: 1/1;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+      transition: border-color .3s, box-shadow .3s;
+    }
+
+    /* inner glow on thumb */
+    .card-thumb::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,229,255,.04), transparent 60%);
+      pointer-events: none;
+    }
+
+    /* bottom fade so text blends */
+    .card-thumb::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
+      background: linear-gradient(transparent, var(--panel));
+      pointer-events: none;
+    }
+
+    .game-card:hover .card-thumb {
+      border-color: rgba(0,229,255,.45);
+      box-shadow: 0 0 20px rgba(0,229,255,.12), inset 0 0 0 1px rgba(0,229,255,.15);
+    }
+
+    /* play overlay */
+    .play-overlay {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,229,255,.06);
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .play-overlay svg {
+      width: 44px; height: 44px;
+      filter: drop-shadow(0 0 10px var(--accent));
+    }
+    .game-card:hover .play-overlay { opacity: 1; }
+
+    /* card info */
+    .card-info {
+      padding: .6rem .1rem .2rem;
+    }
+
+    .card-title {
+      font-family: 'Orbitron', monospace;
+      font-size: .72rem; font-weight: 700;
+      letter-spacing: .07em; text-transform: uppercase;
+      color: #dde8f5;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: color .2s;
+    }
+    .game-card:hover .card-title { color: var(--accent); }
+
+    .card-genre {
+      font-size: .72rem; font-weight: 600;
+      color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase;
+      margin-top: .15rem;
+    }
+
+    /* left accent bar under title */
+    .card-info::before {
+      content: '';
+      display: block; width: 0; height: 1px;
+      background: var(--accent);
+      transition: width .3s ease;
+      margin-bottom: .3rem;
+    }
+    .game-card:hover .card-info::before { width: 100%; }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--muted);
+      font-size: .9rem; letter-spacing: .1em; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-pulse"></div>
+  <div class="bg-pulse2"></div>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="../index.html">CARSON<span>GAMES</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="./index.html" class="active">Games</a></li>
+      <li><a href="../discord/index.html">Discord</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-label">Browse</div>
+    <h1>GAME <span>LIBRARY</span></h1>
+    <div class="hero-sub">Click any title to play</div>
+  </div>
+
+  <!-- GAME GRID -->
+  <section class="games-section">
+    <div class="games-grid" id="gamesGrid">
+
+      <!--
+        ✏️ HOW TO ADD A GAME:
+        Copy one .game-card block.
+        - href  → path to your game (e.g. "../mygame/index.html")
+        - emoji → thumbnail (or swap for an <img> tag)
+        - data-title → game name
+        - data-genre → genre label
+      -->
+
+      <a class="game-card" href="../snake/index.html">
+        <div class="card-thumb">
+          🐍
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Snake Classic</div>
+          <div class="card-genre">Arcade</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../spaceshooter/index.html">
+        <div class="card-thumb">
+          🚀
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Space Shooter</div>
+          <div class="card-genre">Action</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../puzzle/index.html">
+        <div class="card-thumb">
+          🧩
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Puzzle Quest</div>
+          <div class="card-genre">Puzzle</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../dungeon/index.html">
+        <div class="card-thumb">
+          ⚔️
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Dungeon Run</div>
+          <div class="card-genre">RPG</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../racing/index.html">
+        <div class="card-thumb">
+          🏎️
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Turbo Dash</div>
+          <div class="card-genre">Racing</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../bomber/index.html">
+        <div class="card-thumb">
+          💣
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Bomb Squad</div>
+          <div class="card-genre">Strategy</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../platformer/index.html">
+        <div class="card-thumb">
+          🏃
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Platform Rush</div>
+          <div class="card-genre">Platformer</div>
+        </div>
+      </a>
+
+      <a class="game-card" href="../cards/index.html">
+        <div class="card-thumb">
+          🃏
+          <div class="play-overlay">
+            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="21" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+              <polygon points="17,13 33,22 17,31" fill="#00e5ff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="card-title">Card Clash</div>
+          <div class="card-genre">Card Game</div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <script>
+    // ── Scroll-triggered card reveal ──
+    const cards = document.querySelectorAll('.game-card');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // stagger siblings in same row
+          const allCards = [...cards];
+          const idx = allCards.indexOf(entry.target);
+          const rowPos = idx % 4;
+          entry.target.style.transitionDelay = `${rowPos * 0.07}s`;
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    cards.forEach(card => observer.observe(card));
+  </script>
+</body>
+</html>
